@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10131d"><title>Space Browser</title>
+<style>
+:root{color-scheme:dark;--bg:#10131d;--panel:#191e2b;--panel2:#222a3b;--line:#30394d;--text:#edf2ff;--muted:#9ba8bf;--accent:#8b9cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif;height:100vh;display:flex;flex-direction:column}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:12px}
+.logo{font-size:17px;font-weight:750;letter-spacing:.3px;white-space:nowrap}.logo span{color:var(--accent)}
+.tabs{display:flex;gap:6px;overflow:auto;flex:1}.tab{border:1px solid var(--line);background:#171c28;color:var(--muted);padding:8px 12px;border-radius:9px;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.tab.active{background:var(--panel2);color:var(--text);border-color:#59678b}.iconbtn,button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;padding:8px 11px;cursor:pointer}.toolbar{display:flex;gap:7px;padding:10px 14px;background:var(--panel);align-items:center;border-bottom:1px solid var(--line)}.address{display:flex;flex:1;background:#101521;border:1px solid var(--line);border-radius:11px;padding:0 12px;align-items:center;gap:8px}.address input{width:100%;background:transparent;border:0;outline:0;color:var(--text);padding:11px 0;font-size:14px}.address button{border:0;background:transparent;padding:5px;color:var(--muted)}
+main{flex:1;min-height:0;position:relative}iframe{width:100%;height:100%;border:0;background:white}.home{height:100%;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px}.hero{font-size:clamp(36px,7vw,64px);font-weight:800;letter-spacing:-2px;margin:0 0 8px}.hero span{color:var(--accent)}.sub{color:var(--muted);margin:0 0 28px}.search{width:min(650px,95%);display:flex;gap:8px;background:var(--panel);border:1px solid var(--line);padding:8px;border-radius:15px}.search input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);padding:9px}.quick{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:24px}.quick button{padding:10px 14px}.hint{color:var(--muted);font-size:12px;margin-top:28px;text-align:center}.notice{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#272f40;border:1px solid var(--line);padding:10px 14px;border-radius:10px;color:var(--muted);max-width:min(620px,90%);text-align:center;display:none}.drawer{position:absolute;right:12px;top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;width:min(320px,90vw);max-height:70%;overflow:auto;display:none;z-index:3;box-shadow:0 12px 35px #0008}.drawer h3{margin:4px 0 12px}.drawer a{display:block;color:var(--text);padding:8px;border-bottom:1px solid var(--line);text-decoration:none;overflow-wrap:anywhere}.drawer .empty{color:var(--muted)}@media(max-width:600px){header{gap:7px;padding:8px}.logo{font-size:14px}.tab{padding:7px 9px}.toolbar{padding:8px;gap:5px}.toolbar .wide{display:none}}
+</style>
+</head>
+<body>
+<header><div class="logo">✦ SPACE<span> BROWSER</span></div><div class="tabs" id="tabs"></div><button class="iconbtn" id="newTab" title="New tab">＋</button></header>
+<div class="toolbar">
+<button id="back" title="Back">←</button><button id="forward" title="Forward">→</button><button id="reload" title="Reload">↻</button><button id="home" title="Home">⌂</button>
+<div class="address"><span>⌕</span><input id="url" aria-label="Search or enter website" placeholder="Search Google or enter a website address"><button id="go">Go</button></div>
+<button id="bookmark" title="Bookmark this page">☆</button><button id="bookmarks" class="wide" title="Bookmarks">Bookmarks</button><button id="history" class="wide" title="History">History</button>
+</div>
+<main id="stage"><section class="home" id="welcome"><h1 class="hero">Explore <span>Space.</span></h1><p class="sub">A fresh place to explore the web.</p><form class="search" id="searchForm"><input id="searchInput" placeholder="Search the web with Google" aria-label="Search the web"><button>Search</button></form><div class="quick"><button data-url="https://www.google.com">Google</button><button data-url="https://www.wikipedia.org">Wikipedia</button><button data-url="https://www.youtube.com">YouTube</button></div><p class="hint">Some websites prevent being shown inside another page. If a page does not load, use “Open in new tab”.</p></section><div class="notice" id="notice"></div><aside class="drawer" id="drawer"></aside></main>
+<script>
+const $=s=>document.querySelector(s), stage=$('#stage'), welcome=$('#welcome'), urlBox=$('#url');
+let tabs=[],active=0,bookmarks=JSON.parse(localStorage.getItem('space-bookmarks')||'[]'),historyItems=JSON.parse(localStorage.getItem('space-history')||'[]');
+function clean(v){return String(v||'').trim()}
+function normalize(v){v=clean(v);if(!v)return '';if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v)&&v.includes('.')&&!v.includes(' '))v='https://'+v;if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v)||v.includes(' '))return 'https://www.google.com/search?q='+encodeURIComponent(v);return v}
+function current(){return tabs[active]}
+function renderTabs(){ $('#tabs').innerHTML='';tabs.forEach((t,i)=>{let b=document.createElement('button');b.className='tab'+(i===active?' active':'');b.textContent=t.title||'New tab';b.title='Switch tab';b.onclick=()=>switchTab(i);$('#tabs').append(b)})}
+function switchTab(i){active=i;renderTabs();showCurrent()}
+function showHome(){let f=current();if(f.frame){f.frame.remove();f.frame=null}welcome.style.display='flex';urlBox.value=f.url||'';renderTabs()}
+function showCurrent(){let t=current();if(t.frame){welcome.style.display='none';if(t.frame.parentElement!==stage)stage.append(t.frame);urlBox.value=t.url;renderTabs()}else showHome()}
+function navigate(raw){let target=normalize(raw);if(!target)return;let t=current();if(t.frame)t.frame.remove();t.url=target;t.title=(()=>{try{return new URL(target).hostname}catch{return 'Search'}})();urlBox.value=target;welcome.style.display='none';let frame=document.createElement('iframe');frame.title='Web page';frame.referrerPolicy='strict-origin-when-cross-origin';frame.src=target;t.frame=frame;stage.append(frame);historyItems.unshift({url:target,title:t.title,at:new Date().toLocaleString()});historyItems=historyItems.slice(0,100);localStorage.setItem('space-history',JSON.stringify(historyItems));renderTabs();showNotice('If this website blocks embedding, open it in a new tab from the address bar menu or use the browser’s open-in-new-tab option.') }
+function newTab(){tabs.push({title:'New tab',url:'',frame:null});active=tabs.length-1;renderTabs();showHome()}
+function showNotice(msg){let n=$('#notice');n.textContent=msg;n.style.display='block';clearTimeout(showNotice.timer);showNotice.timer=setTimeout(()=>n.style.display='none',6500)}
+function drawer(title,items){let d=$('#drawer');d.innerHTML='<h3>'+title+'</h3>';if(!items.length){d.innerHTML+='<p class="empty">Nothing here yet.</p>'}items.forEach(x=>{let a=document.createElement('a');a.href='#';a.textContent=x.title+' — '+x.url;a.onclick=e=>{e.preventDefault();navigate(x.url);d.style.display='none'};d.append(a)});let close=document.createElement('button');close.textContent='Close';close.onclick=()=>d.style.display='none';d.append(close);d.style.display='block'}
+$('#newTab').onclick=newTab;$('#go').onclick=()=>navigate(urlBox.value);urlBox.addEventListener('keydown',e=>{if(e.key==='Enter')navigate(urlBox.value)});$('#searchForm').onsubmit=e=>{e.preventDefault();navigate($('#searchInput').value)};document.querySelectorAll('[data-url]').forEach(b=>b.onclick=()=>navigate(b.dataset.url));
+$('#home').onclick=()=>{let t=current();if(t.frame){t.frame.remove();t.frame=null}t.url='';t.title='New tab';showHome()};
+$('#reload').onclick=()=>{let t=current();if(t.frame)t.frame.src=t.url};$('#back').onclick=()=>{try{current().frame?.contentWindow.history.back()}catch{showNotice('This page does not allow browser navigation controls.')}};$('#forward').onclick=()=>{try{current().frame?.contentWindow.history.forward()}catch{showNotice('This page does not allow browser navigation controls.')}};
+$('#bookmark').onclick=()=>{let t=current();if(!t.url)return showNotice('Open a page before bookmarking it.');if(!bookmarks.some(x=>x.url===t.url)){bookmarks.unshift({title:t.title,url:t.url});localStorage.setItem('space-bookmarks',JSON.stringify(bookmarks))}showNotice('Bookmark saved on this device.')};
+$('#bookmarks').onclick=()=>drawer('Bookmarks',bookmarks);$('#history').onclick=()=>drawer('Recent history',historyItems);
+newTab();
+</script>
+</body></html>
