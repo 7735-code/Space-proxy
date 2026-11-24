@@ -1,5 +1,0 @@
-name = "space-cloud-browser"
-main = "src/index.js"
-compatibility_date = "2026-11-24"
-workers_dev = true
-preview_urls = false
